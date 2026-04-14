@@ -6,34 +6,14 @@ import Image from "next/image";
 import { LuChevronLeft, LuChevronRight, LuX } from "react-icons/lu";
 import { menuImages } from "../constants";
 
-type Point = {
-  x: number;
-  y: number;
-};
-
-const MIN_SCALE = 1;
-const MAX_SCALE = 4;
-const DOUBLE_TAP_SCALE = 2.2;
-const SWIPE_THRESHOLD = 60;
+const SWIPE_THRESHOLD = 50;
 
 export default function MenuViewer() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [scale, setScale] = useState(1);
-  const [offset, setOffset] = useState<Point>({ x: 0, y: 0 });
-  const [isInteracting, setIsInteracting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const stageRef = useRef<HTMLDivElement | null>(null);
-
-  const gestureRef = useRef({
-    mode: "none" as "none" | "pan" | "pinch" | "swipe",
-    startScale: 1,
-    startDistance: 0,
-    startOffset: { x: 0, y: 0 } as Point,
-    startTouch: { x: 0, y: 0 } as Point,
-    lastTapTime: 0,
-    swipeDeltaX: 0,
-    swipeDeltaY: 0,
-  });
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   const selectedImage =
     selectedIndex !== null ? menuImages[selectedIndex] : null;
@@ -42,58 +22,27 @@ export default function MenuViewer() {
   const canNext =
     selectedIndex !== null && selectedIndex < menuImages.length - 1;
 
-  const clamp = (value: number, min: number, max: number) =>
-    Math.min(max, Math.max(min, value));
-
-  const distanceBetweenTouches = (touches: React.TouchList) => {
-    if (touches.length < 2) return 0;
-    const dx = touches[0].clientX - touches[1].clientX;
-    const dy = touches[0].clientY - touches[1].clientY;
-    return Math.hypot(dx, dy);
-  };
-
-  const resetView = () => {
-    setScale(1);
-    setOffset({ x: 0, y: 0 });
-  };
-
   const openViewer = (index: number) => {
+    setIsLoading(true);
     setSelectedIndex(index);
-    setScale(1);
-    setOffset({ x: 0, y: 0 });
   };
 
   const closeViewer = () => {
     setSelectedIndex(null);
-    setScale(1);
-    setOffset({ x: 0, y: 0 });
   };
 
   const goPrev = () => {
     setSelectedIndex((prev) => {
       if (prev === null) return 0;
-      const next = Math.max(0, prev - 1);
-      return next;
+      return Math.max(0, prev - 1);
     });
-    resetView();
   };
 
   const goNext = () => {
     setSelectedIndex((prev) => {
       if (prev === null) return 0;
-      const next = Math.min(menuImages.length - 1, prev + 1);
-      return next;
+      return Math.min(menuImages.length - 1, prev + 1);
     });
-    resetView();
-  };
-
-  const zoomTo = (nextScale: number) => {
-    const clamped = clamp(Number(nextScale.toFixed(2)), MIN_SCALE, MAX_SCALE);
-    setScale(clamped);
-
-    if (clamped === 1) {
-      setOffset({ x: 0, y: 0 });
-    }
   };
 
   useEffect(() => {
@@ -106,114 +55,42 @@ export default function MenuViewer() {
     };
 
     const previousOverflow = document.body.style.overflow;
-    const previousTouchAction = document.body.style.touchAction;
-
     document.body.style.overflow = "hidden";
-    document.body.style.touchAction = "none";
 
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
       document.body.style.overflow = previousOverflow;
-      document.body.style.touchAction = previousTouchAction;
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [selectedIndex, canPrev, canNext]);
 
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
-
-    const delta = e.deltaY > 0 ? -0.18 : 0.18;
-    zoomTo(scale + delta);
-  };
-
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    const now = Date.now();
-
-    setIsInteracting(true);
-
-    if (e.touches.length === 2) {
-      gestureRef.current.mode = "pinch";
-      gestureRef.current.startDistance = distanceBetweenTouches(e.touches);
-      gestureRef.current.startScale = scale;
-      return;
-    }
-
     if (e.touches.length !== 1) return;
 
-    const touch = e.touches[0];
-
-    if (now - gestureRef.current.lastTapTime < 260) {
-      if (scale > 1) {
-        zoomTo(1);
-      } else {
-        zoomTo(DOUBLE_TAP_SCALE);
-      }
-    }
-
-    gestureRef.current.lastTapTime = now;
-    gestureRef.current.startTouch = { x: touch.clientX, y: touch.clientY };
-    gestureRef.current.startOffset = offset;
-    gestureRef.current.swipeDeltaX = 0;
-    gestureRef.current.swipeDeltaY = 0;
-    gestureRef.current.mode = scale > 1 ? "pan" : "swipe";
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
   };
 
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 2) {
-      const currentDistance = distanceBetweenTouches(e.touches);
-      const ratio = currentDistance / (gestureRef.current.startDistance || 1);
-      zoomTo(gestureRef.current.startScale * ratio);
-      return;
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+
+    const deltaX = endX - touchStartX.current;
+    const deltaY = endY - touchStartY.current;
+
+    const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY);
+    const isStrongEnough = Math.abs(deltaX) > SWIPE_THRESHOLD;
+
+    if (isHorizontalSwipe && isStrongEnough) {
+      if (deltaX < 0 && canNext) goNext();
+      if (deltaX > 0 && canPrev) goPrev();
     }
 
-    if (e.touches.length !== 1) return;
-
-    const touch = e.touches[0];
-    const dx = touch.clientX - gestureRef.current.startTouch.x;
-    const dy = touch.clientY - gestureRef.current.startTouch.y;
-
-    if (gestureRef.current.mode === "pan" && scale > 1) {
-      e.preventDefault();
-      setOffset({
-        x: gestureRef.current.startOffset.x + dx,
-        y: gestureRef.current.startOffset.y + dy,
-      });
-      return;
-    }
-
-    if (gestureRef.current.mode === "swipe") {
-      gestureRef.current.swipeDeltaX = dx;
-      gestureRef.current.swipeDeltaY = dy;
-    }
-  };
-
-  const handleTouchEnd = () => {
-    const { mode, swipeDeltaX, swipeDeltaY } = gestureRef.current;
-
-    if (mode === "swipe" && scale === 1) {
-      const mostlyHorizontal = Math.abs(swipeDeltaX) > Math.abs(swipeDeltaY);
-
-      if (mostlyHorizontal && Math.abs(swipeDeltaX) > SWIPE_THRESHOLD) {
-        if (swipeDeltaX < 0 && canNext) goNext();
-        if (swipeDeltaX > 0 && canPrev) goPrev();
-      }
-    }
-
-    gestureRef.current.mode = "none";
-    gestureRef.current.startDistance = 0;
-    gestureRef.current.swipeDeltaX = 0;
-    gestureRef.current.swipeDeltaY = 0;
-
-    setIsInteracting(false);
-  };
-
-  const handleTouchCancel = () => {
-    gestureRef.current.mode = "none";
-    gestureRef.current.startDistance = 0;
-    gestureRef.current.swipeDeltaX = 0;
-    gestureRef.current.swipeDeltaY = 0;
-    setIsInteracting(false);
+    touchStartX.current = null;
+    touchStartY.current = null;
   };
 
   return (
@@ -250,9 +127,12 @@ export default function MenuViewer() {
             type="button"
             onClick={() => openViewer(0)}
             className="block w-full cursor-pointer overflow-hidden rounded-2xl p-4 text-left transition hover:opacity-95"
+            aria-label="Menü öffnen"
           >
             <div className="flex justify-center overflow-hidden rounded-xl bg-white shadow-lg">
-              <div className="relative w-full max-w-155">
+              <div className="relative w-full max-w-[620px]">
+                <div className="absolute inset-0 animate-pulse bg-neutral-200" />
+
                 <Image
                   src="/menu-1.png"
                   alt="Menü Vorschau"
@@ -260,7 +140,7 @@ export default function MenuViewer() {
                   height={877}
                   priority
                   sizes="(max-width: 768px) 100vw, 620px"
-                  className="h-auto w-full object-contain"
+                  className="relative z-10 h-auto w-full object-contain"
                 />
               </div>
             </div>
@@ -269,12 +149,17 @@ export default function MenuViewer() {
       </section>
 
       {selectedImage && (
-        <div className="fixed inset-0 z-[100] bg-black/88">
-          <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+        <div
+          className="fixed inset-0 z-100 bg-black/90"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menüansicht"
+        >
+          <div className="relative flex h-full w-full items-center justify-center">
             <button
               type="button"
               onClick={closeViewer}
-              className="absolute top-3 right-3 z-30 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/92 text-neutral-900 shadow-md backdrop-blur-sm transition hover:bg-white sm:top-4 sm:right-4"
+              className="absolute top-3 right-3 z-30 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-neutral-900 shadow-md backdrop-blur-sm transition hover:bg-white sm:top-4 sm:right-4 cursor-pointer"
               aria-label="Schließen"
             >
               <LuX size={22} />
@@ -284,7 +169,7 @@ export default function MenuViewer() {
               type="button"
               onClick={goPrev}
               disabled={!canPrev}
-              className="absolute top-1/2 left-2 z-30 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-neutral-900 shadow-md backdrop-blur-sm transition hover:bg-white disabled:opacity-35 disabled:hover:bg-white/92 sm:left-4 sm:h-12 sm:w-12"
+              className="absolute top-1/2 left-2 z-30 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-neutral-900 shadow-md backdrop-blur-sm transition hover:bg-white disabled:cursor-default disabled:opacity-35 sm:left-4 sm:h-12 sm:w-12 cursor-pointer"
               aria-label="Vorherige Seite"
             >
               <LuChevronLeft size={24} />
@@ -294,67 +179,39 @@ export default function MenuViewer() {
               type="button"
               onClick={goNext}
               disabled={!canNext}
-              className="absolute top-1/2 right-2 z-30 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-neutral-900 shadow-md backdrop-blur-sm transition hover:bg-white disabled:opacity-35 disabled:hover:bg-white/92 sm:right-4 sm:h-12 sm:w-12"
+              className="absolute top-1/2 right-2 z-30 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-neutral-900 shadow-md backdrop-blur-sm transition hover:bg-white disabled:cursor-default disabled:opacity-35 sm:right-4 sm:h-12 sm:w-12 cursor-pointer"
               aria-label="Nächste Seite"
             >
               <LuChevronRight size={24} />
             </button>
 
             <div
-              ref={stageRef}
-              className="relative flex h-full w-full items-center justify-center overflow-hidden px-14 py-20 sm:px-20 sm:py-24"
-              onWheel={handleWheel}
+              className="flex h-full w-full items-center justify-center px-14 py-20 sm:px-20 sm:py-24"
               onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              onTouchCancel={handleTouchCancel}
-              style={{ touchAction: "none" }}
             >
+              {isLoading && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60">
+                  <div className="flex flex-col items-center gap-3 text-white">
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    <span className="text-sm font-medium">Wird geladen...</span>
+                  </div>
+                </div>
+              )}
               <img
                 src={selectedImage.file}
                 alt={selectedImage.title}
+                onLoad={() => setIsLoading(false)}
                 draggable={false}
-                className="select-none object-contain will-change-transform"
+                className="block max-h-full max-w-full select-none object-contain"
                 style={{
-                  maxWidth: "100%",
-                  maxHeight: "100%",
-                  transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})`,
-                  transformOrigin: "center center",
-                  transition: isInteracting ? "none" : "transform 180ms ease",
+                  width: "auto",
+                  height: "auto",
                 }}
               />
             </div>
 
-            <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-full bg-white/92 px-2 py-2 shadow-md backdrop-blur-sm sm:bottom-5">
-              <button
-                type="button"
-                onClick={() => zoomTo(scale - 0.2)}
-                className="rounded-full px-3 py-1.5 text-sm font-semibold text-neutral-800 transition hover:bg-black/5"
-                aria-label="Verkleinern"
-              >
-                -
-              </button>
-
-              <button
-                type="button"
-                onClick={resetView}
-                className="min-w-17.5 rounded-full px-3 py-1.5 text-center text-sm font-semibold text-neutral-700 transition hover:bg-black/5"
-                aria-label="Zoom zurücksetzen"
-              >
-                {Math.round(scale * 100)}%
-              </button>
-
-              <button
-                type="button"
-                onClick={() => zoomTo(scale + 0.2)}
-                className="rounded-full px-3 py-1.5 text-sm font-semibold text-neutral-800 transition hover:bg-black/5"
-                aria-label="Vergrößern"
-              >
-                +
-              </button>
-            </div>
-
-            <div className="absolute bottom-18 left-1/2 z-30 -translate-x-1/2 rounded-full bg-white/92 px-3 py-1 text-sm font-medium text-neutral-700 shadow-md backdrop-blur-sm sm:bottom-20">
+            <div className="absolute bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-full bg-white/95 px-3 py-1 text-sm font-medium text-neutral-700 shadow-md backdrop-blur-sm sm:bottom-5">
               {selectedIndex! + 1} / {menuImages.length}
             </div>
           </div>
