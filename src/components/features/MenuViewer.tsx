@@ -1,86 +1,219 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { LuChevronLeft, LuChevronRight, LuX } from "react-icons/lu";
 import { menuImages } from "../constants";
 
+type Point = {
+  x: number;
+  y: number;
+};
+
+const MIN_SCALE = 1;
+const MAX_SCALE = 4;
+const DOUBLE_TAP_SCALE = 2.2;
+const SWIPE_THRESHOLD = 60;
+
 export default function MenuViewer() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [scale, setScale] = useState(1);
-  const [containerWidth, setContainerWidth] = useState(900);
+  const [offset, setOffset] = useState<Point>({ x: 0, y: 0 });
+  const [isInteracting, setIsInteracting] = useState(false);
 
-  useEffect(() => {
-    const updateWidth = () => {
-      if (window.innerWidth < 640) {
-        setContainerWidth(window.innerWidth - 24);
-        return;
-      }
-      if (window.innerWidth < 1024) {
-        setContainerWidth(window.innerWidth - 64);
-        return;
-      }
-      setContainerWidth(900);
-    };
+  const stageRef = useRef<HTMLDivElement | null>(null);
 
-    updateWidth();
-    window.addEventListener("resize", updateWidth);
-    return () => window.removeEventListener("resize", updateWidth);
-  }, []);
+  const gestureRef = useRef({
+    mode: "none" as "none" | "pan" | "pinch" | "swipe",
+    startScale: 1,
+    startDistance: 0,
+    startOffset: { x: 0, y: 0 } as Point,
+    startTouch: { x: 0, y: 0 } as Point,
+    lastTapTime: 0,
+    swipeDeltaX: 0,
+    swipeDeltaY: 0,
+  });
 
-  useEffect(() => {
-    if (selectedIndex === null) return;
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setSelectedIndex(null);
-      }
-
-      if (e.key === "ArrowLeft") {
-        setSelectedIndex((prev) => {
-          if (prev === null) return 0;
-          return Math.max(0, prev - 1);
-        });
-      }
-
-      if (e.key === "ArrowRight") {
-        setSelectedIndex((prev) => {
-          if (prev === null) return 0;
-          return Math.min(menuImages.length - 1, prev + 1);
-        });
-      }
-    };
-
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [selectedIndex]);
+  const selectedImage =
+    selectedIndex !== null ? menuImages[selectedIndex] : null;
 
   const canPrev = selectedIndex !== null && selectedIndex > 0;
   const canNext =
     selectedIndex !== null && selectedIndex < menuImages.length - 1;
 
-  const viewerWidth = useMemo(() => {
-    if (containerWidth < 420) return containerWidth;
-    if (containerWidth < 768) return containerWidth - 8;
-    return Math.min(860, containerWidth);
-  }, [containerWidth]);
+  const clamp = (value: number, min: number, max: number) =>
+    Math.min(max, Math.max(min, value));
 
-  const selectedImage =
-    selectedIndex !== null ? menuImages[selectedIndex] : null;
+  const distanceBetweenTouches = (touches: React.TouchList) => {
+    if (touches.length < 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.hypot(dx, dy);
+  };
 
-  const clampScale = (value: number) =>
-    Math.min(2.2, Math.max(0.8, +value.toFixed(2)));
+  const resetView = () => {
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+  };
+
+  const openViewer = (index: number) => {
+    setSelectedIndex(index);
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+  };
+
+  const closeViewer = () => {
+    setSelectedIndex(null);
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+  };
+
+  const goPrev = () => {
+    setSelectedIndex((prev) => {
+      if (prev === null) return 0;
+      const next = Math.max(0, prev - 1);
+      return next;
+    });
+    resetView();
+  };
+
+  const goNext = () => {
+    setSelectedIndex((prev) => {
+      if (prev === null) return 0;
+      const next = Math.min(menuImages.length - 1, prev + 1);
+      return next;
+    });
+    resetView();
+  };
+
+  const zoomTo = (nextScale: number) => {
+    const clamped = clamp(Number(nextScale.toFixed(2)), MIN_SCALE, MAX_SCALE);
+    setScale(clamped);
+
+    if (clamped === 1) {
+      setOffset({ x: 0, y: 0 });
+    }
+  };
+
+  useEffect(() => {
+    if (selectedIndex === null) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeViewer();
+      if (e.key === "ArrowLeft" && canPrev) goPrev();
+      if (e.key === "ArrowRight" && canNext) goNext();
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    const previousTouchAction = document.body.style.touchAction;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.touchAction = previousTouchAction;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [selectedIndex, canPrev, canNext]);
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
 
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    setScale((prev) => clampScale(prev + delta));
+    const delta = e.deltaY > 0 ? -0.18 : 0.18;
+    zoomTo(scale + delta);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const now = Date.now();
+
+    setIsInteracting(true);
+
+    if (e.touches.length === 2) {
+      gestureRef.current.mode = "pinch";
+      gestureRef.current.startDistance = distanceBetweenTouches(e.touches);
+      gestureRef.current.startScale = scale;
+      return;
+    }
+
+    if (e.touches.length !== 1) return;
+
+    const touch = e.touches[0];
+
+    if (now - gestureRef.current.lastTapTime < 260) {
+      if (scale > 1) {
+        zoomTo(1);
+      } else {
+        zoomTo(DOUBLE_TAP_SCALE);
+      }
+    }
+
+    gestureRef.current.lastTapTime = now;
+    gestureRef.current.startTouch = { x: touch.clientX, y: touch.clientY };
+    gestureRef.current.startOffset = offset;
+    gestureRef.current.swipeDeltaX = 0;
+    gestureRef.current.swipeDeltaY = 0;
+    gestureRef.current.mode = scale > 1 ? "pan" : "swipe";
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2) {
+      const currentDistance = distanceBetweenTouches(e.touches);
+      const ratio = currentDistance / (gestureRef.current.startDistance || 1);
+      zoomTo(gestureRef.current.startScale * ratio);
+      return;
+    }
+
+    if (e.touches.length !== 1) return;
+
+    const touch = e.touches[0];
+    const dx = touch.clientX - gestureRef.current.startTouch.x;
+    const dy = touch.clientY - gestureRef.current.startTouch.y;
+
+    if (gestureRef.current.mode === "pan" && scale > 1) {
+      e.preventDefault();
+      setOffset({
+        x: gestureRef.current.startOffset.x + dx,
+        y: gestureRef.current.startOffset.y + dy,
+      });
+      return;
+    }
+
+    if (gestureRef.current.mode === "swipe") {
+      gestureRef.current.swipeDeltaX = dx;
+      gestureRef.current.swipeDeltaY = dy;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    const { mode, swipeDeltaX, swipeDeltaY } = gestureRef.current;
+
+    if (mode === "swipe" && scale === 1) {
+      const mostlyHorizontal = Math.abs(swipeDeltaX) > Math.abs(swipeDeltaY);
+
+      if (mostlyHorizontal && Math.abs(swipeDeltaX) > SWIPE_THRESHOLD) {
+        if (swipeDeltaX < 0 && canNext) goNext();
+        if (swipeDeltaX > 0 && canPrev) goPrev();
+      }
+    }
+
+    gestureRef.current.mode = "none";
+    gestureRef.current.startDistance = 0;
+    gestureRef.current.swipeDeltaX = 0;
+    gestureRef.current.swipeDeltaY = 0;
+
+    setIsInteracting(false);
+  };
+
+  const handleTouchCancel = () => {
+    gestureRef.current.mode = "none";
+    gestureRef.current.startDistance = 0;
+    gestureRef.current.swipeDeltaX = 0;
+    gestureRef.current.swipeDeltaY = 0;
+    setIsInteracting(false);
   };
 
   return (
@@ -104,7 +237,7 @@ export default function MenuViewer() {
               Speisekarte
             </h1>
             <p className="mt-2 text-base text-neutral-200 md:text-lg">
-              Klicke auf die Vorschau, um das Menü größer anzusehen.
+              Tippe auf die Vorschau, um das Menü größer anzusehen.
             </p>
             <div className="mt-8 h-px w-full bg-black/5" />
           </div>
@@ -115,13 +248,10 @@ export default function MenuViewer() {
         <article className="w-full max-w-3xl">
           <button
             type="button"
-            onClick={() => {
-              setSelectedIndex(0);
-              setScale(1);
-            }}
-            className="block w-full cursor-pointer overflow-hidden rounded-2xl p-4 text-left transition"
+            onClick={() => openViewer(0)}
+            className="block w-full cursor-pointer overflow-hidden rounded-2xl p-4 text-left transition hover:opacity-95"
           >
-            <div className="flex justify-center overflow-hidden rounded-xl bg-white">
+            <div className="flex justify-center overflow-hidden rounded-xl bg-white shadow-lg">
               <div className="relative w-full max-w-155">
                 <Image
                   src="/menu-1.png"
@@ -139,12 +269,12 @@ export default function MenuViewer() {
       </section>
 
       {selectedImage && (
-        <div className="fixed inset-0 z-100 bg-black/75 p-2 sm:p-4">
-          <div className="relative mx-auto flex h-full max-w-7xl items-center justify-center overflow-hidden rounded-2xl bg-neutral-50">
+        <div className="fixed inset-0 z-[100] bg-black/88">
+          <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
             <button
               type="button"
-              onClick={() => setSelectedIndex(null)}
-              className="absolute top-3 right-3 z-20 inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white/90 text-neutral-900 backdrop-blur-sm sm:top-4 sm:right-4"
+              onClick={closeViewer}
+              className="absolute top-3 right-3 z-30 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/92 text-neutral-900 shadow-md backdrop-blur-sm transition hover:bg-white sm:top-4 sm:right-4"
               aria-label="Schließen"
             >
               <LuX size={22} />
@@ -152,13 +282,9 @@ export default function MenuViewer() {
 
             <button
               type="button"
-              onClick={() =>
-                setSelectedIndex((prev) =>
-                  prev === null ? 0 : Math.max(0, prev - 1),
-                )
-              }
+              onClick={goPrev}
               disabled={!canPrev}
-              className="absolute top-1/2 left-2 z-20 inline-flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/90 text-neutral-900 backdrop-blur-sm disabled:cursor-default disabled:opacity-35 sm:left-4 sm:h-12 sm:w-12"
+              className="absolute top-1/2 left-2 z-30 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-neutral-900 shadow-md backdrop-blur-sm transition hover:bg-white disabled:opacity-35 disabled:hover:bg-white/92 sm:left-4 sm:h-12 sm:w-12"
               aria-label="Vorherige Seite"
             >
               <LuChevronLeft size={24} />
@@ -166,69 +292,69 @@ export default function MenuViewer() {
 
             <button
               type="button"
-              onClick={() =>
-                setSelectedIndex((prev) =>
-                  prev === null ? 0 : Math.min(menuImages.length - 1, prev + 1),
-                )
-              }
+              onClick={goNext}
               disabled={!canNext}
-              className="absolute top-1/2 right-2 z-20 inline-flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/90 text-neutral-900 backdrop-blur-sm disabled:cursor-default disabled:opacity-35 sm:right-4 sm:h-12 sm:w-12"
+              className="absolute top-1/2 right-2 z-30 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-neutral-900 shadow-md backdrop-blur-sm transition hover:bg-white disabled:opacity-35 disabled:hover:bg-white/92 sm:right-4 sm:h-12 sm:w-12"
               aria-label="Nächste Seite"
             >
               <LuChevronRight size={24} />
             </button>
 
             <div
-              className="flex h-full w-full items-center justify-center overflow-auto p-4 sm:p-10"
+              ref={stageRef}
+              className="relative flex h-full w-full items-center justify-center overflow-hidden px-14 py-20 sm:px-20 sm:py-24"
               onWheel={handleWheel}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchCancel}
+              style={{ touchAction: "none" }}
             >
-              <div className="rounded-xl bg-white p-2 sm:p-4">
-                <div
-                  className="relative mx-auto origin-center transition-transform duration-200"
-                  style={{
-                    width: viewerWidth,
-                    transform: `scale(${scale})`,
-                  }}
-                >
-                  <div className="relative aspect-210/297 w-full">
-                    <Image
-                      src={selectedImage.file}
-                      alt={selectedImage.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 860px"
-                      className="rounded-md object-contain"
-                      priority
-                    />
-                  </div>
-                </div>
-              </div>
+              <img
+                src={selectedImage.file}
+                alt={selectedImage.title}
+                draggable={false}
+                className="select-none object-contain will-change-transform"
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})`,
+                  transformOrigin: "center center",
+                  transition: isInteracting ? "none" : "transform 180ms ease",
+                }}
+              />
             </div>
 
-            <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/90 px-2 py-2 backdrop-blur-sm sm:bottom-4">
+            <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-full bg-white/92 px-2 py-2 shadow-md backdrop-blur-sm sm:bottom-5">
               <button
                 type="button"
-                onClick={() => setScale((prev) => clampScale(prev - 0.1))}
-                className="cursor-pointer rounded-full px-3 py-1.5 text-sm font-medium text-neutral-800"
+                onClick={() => zoomTo(scale - 0.2)}
+                className="rounded-full px-3 py-1.5 text-sm font-semibold text-neutral-800 transition hover:bg-black/5"
                 aria-label="Verkleinern"
               >
                 -
               </button>
 
-              <span className="min-w-14.5 text-center text-sm font-medium text-neutral-700">
+              <button
+                type="button"
+                onClick={resetView}
+                className="min-w-17.5 rounded-full px-3 py-1.5 text-center text-sm font-semibold text-neutral-700 transition hover:bg-black/5"
+                aria-label="Zoom zurücksetzen"
+              >
                 {Math.round(scale * 100)}%
-              </span>
+              </button>
 
               <button
                 type="button"
-                onClick={() => setScale((prev) => clampScale(prev + 0.1))}
-                className="cursor-pointer rounded-full px-3 py-1.5 text-sm font-medium text-neutral-800"
+                onClick={() => zoomTo(scale + 0.2)}
+                className="rounded-full px-3 py-1.5 text-sm font-semibold text-neutral-800 transition hover:bg-black/5"
                 aria-label="Vergrößern"
               >
                 +
               </button>
             </div>
 
-            <div className="absolute bottom-16 left-1/2 z-20 -translate-x-1/2 rounded-full bg-white/90 px-3 py-1 text-sm font-medium text-neutral-700 backdrop-blur-sm sm:bottom-18">
+            <div className="absolute bottom-18 left-1/2 z-30 -translate-x-1/2 rounded-full bg-white/92 px-3 py-1 text-sm font-medium text-neutral-700 shadow-md backdrop-blur-sm sm:bottom-20">
               {selectedIndex! + 1} / {menuImages.length}
             </div>
           </div>
