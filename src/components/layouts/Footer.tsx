@@ -81,13 +81,13 @@ export const Footer = () => {
 
   return (
     <footer ref={footerRef} className="relative overflow-hidden text-white">
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 bg-black/60">
         <Image
-          src="/background2.jpg"
+          src="/background2.webp"
           alt="Pizza background"
           fill
           className="object-cover object-[60%_center] md:object-center"
-          priority={false}
+          loading="lazy"
         />
         <div className="absolute inset-0 bg-black/45" />
         <div className="absolute inset-0 bg-linear-to-b from-black/5 via-black/10 to-black/25" />
@@ -98,11 +98,12 @@ export const Footer = () => {
           <div className="flex items-center gap-4">
             <div className="h-px flex-1 bg-white/20" />
             <Image
-              src="/mainlogo.png"
+              src="/mainlogo.webp"
               alt="Picco Bello Logo"
               width={180}
               height={96}
               style={{ width: "auto" }}
+              loading="lazy"
               className="h-auto w-35 sm:w-40 md:w-45"
             />
             <div className="h-px flex-1 bg-white/20" />

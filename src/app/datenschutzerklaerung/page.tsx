@@ -6,7 +6,7 @@ export default function PrivacyPolicy() {
       <section className="relative overflow-hidden pt-24 sm:px-6 lg:px-8">
         <div className="absolute inset-0 -z-10">
           <Image
-            src="/background5.jpg"
+            src="/background5.webp"
             alt=""
             fill
             priority

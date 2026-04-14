@@ -73,12 +73,22 @@ export default function MenuViewer() {
   const selectedImage =
     selectedIndex !== null ? menuImages[selectedIndex] : null;
 
+  const clampScale = (value: number) =>
+    Math.min(2.2, Math.max(0.8, +value.toFixed(2)));
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setScale((prev) => clampScale(prev + delta));
+  };
+
   return (
     <>
       <section className="relative overflow-hidden pt-24 sm:px-6 lg:px-8">
         <div className="absolute inset-0 -z-10">
           <Image
-            src="/background3.jpg"
+            src="/background3.webp"
             alt=""
             fill
             priority
@@ -101,7 +111,7 @@ export default function MenuViewer() {
         </div>
       </section>
 
-      <section className="mx-auto flex max-w-6xl flex-col items-center">
+      <section className="mx-auto flex max-w-6xl flex-col items-center py-20">
         <article className="w-full max-w-3xl">
           <button
             type="button"
@@ -112,9 +122,9 @@ export default function MenuViewer() {
             className="block w-full cursor-pointer overflow-hidden rounded-2xl p-4 text-left transition"
           >
             <div className="flex justify-center overflow-hidden rounded-xl bg-white">
-              <div className="relative aspect-210/297 w-full max-w-155 flex items-center">
+              <div className="relative w-full max-w-155">
                 <Image
-                  src="/menu-1.jpg"
+                  src="/menu-1.png"
                   alt="Menü Vorschau"
                   width={620}
                   height={877}
@@ -168,7 +178,10 @@ export default function MenuViewer() {
               <LuChevronRight size={24} />
             </button>
 
-            <div className="flex h-full w-full items-center justify-center overflow-auto p-4 sm:p-10">
+            <div
+              className="flex h-full w-full items-center justify-center overflow-auto p-4 sm:p-10"
+              onWheel={handleWheel}
+            >
               <div className="rounded-xl bg-white p-2 sm:p-4">
                 <div
                   className="relative mx-auto origin-center transition-transform duration-200"
@@ -194,9 +207,7 @@ export default function MenuViewer() {
             <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/90 px-2 py-2 backdrop-blur-sm sm:bottom-4">
               <button
                 type="button"
-                onClick={() =>
-                  setScale((prev) => Math.max(0.8, +(prev - 0.1).toFixed(2)))
-                }
+                onClick={() => setScale((prev) => clampScale(prev - 0.1))}
                 className="cursor-pointer rounded-full px-3 py-1.5 text-sm font-medium text-neutral-800"
                 aria-label="Verkleinern"
               >
@@ -209,9 +220,7 @@ export default function MenuViewer() {
 
               <button
                 type="button"
-                onClick={() =>
-                  setScale((prev) => Math.min(2.2, +(prev + 0.1).toFixed(2)))
-                }
+                onClick={() => setScale((prev) => clampScale(prev + 0.1))}
                 className="cursor-pointer rounded-full px-3 py-1.5 text-sm font-medium text-neutral-800"
                 aria-label="Vergrößern"
               >

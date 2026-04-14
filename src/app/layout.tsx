@@ -54,7 +54,7 @@ export default function RootLayout({
       <body>
         <ScrollToTop />
         <Navbar />
-        <main className="min-h-screen">{children}</main>
+        <main>{children}</main>
         <Footer />
         <Script
           src="https://www.foodbooking.com/widget/js/ewm2.js"

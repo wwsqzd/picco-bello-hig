@@ -6,7 +6,7 @@ export default function Impressum() {
       <section className="relative overflow-hidden pt-24 sm:px-6 lg:px-8">
         <div className="absolute inset-0 -z-10">
           <Image
-            src="/background6.jpg"
+            src="/background6.webp"
             alt=""
             fill
             priority
