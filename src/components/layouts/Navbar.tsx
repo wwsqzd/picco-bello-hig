@@ -131,7 +131,7 @@ export const Navbar = () => {
       >
         <Link href="/" className="z-60 flex shrink-0 items-center gap-3">
           <Image
-            src="/mainlogo.png"
+            src="/mainlogo.webp"
             alt="Logo"
             width={150}
             height={100}

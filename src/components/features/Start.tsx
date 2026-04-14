@@ -6,7 +6,7 @@ export const Start = () => {
   return (
     <section className="relative flex min-h-screen w-full items-center justify-center overflow-hidden">
       <Image
-        src="/background1.jpg"
+        src="/background1.webp"
         alt="Frische Pizza"
         fill
         priority

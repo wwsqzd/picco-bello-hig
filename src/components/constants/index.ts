@@ -108,10 +108,10 @@ export const navItems = [
 export const menuImages = [
   {
     title: "Menü Seite 1",
-    file: "/menu-1.jpg",
+    file: "/menu-1.png",
   },
   {
     title: "Menü Seite 2",
-    file: "/menu-2.jpg",
+    file: "/menu-2.png",
   },
 ];
