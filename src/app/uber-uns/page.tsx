@@ -76,12 +76,13 @@ export default function AboutPage() {
   return (
     <>
       <section className="relative overflow-hidden sm:px-6 lg:px-8 pt-24">
-        <div className="absolute inset-0 -z-10">
+        <div className="absolute bg-black inset-0 -z-10">
           <Image
             src="/background4.webp"
             alt=""
             fill
             priority
+            placeholder="empty"
             className="object-cover object-[center_80%] scale-105"
           />
           <div className="absolute inset-0 bg-black/45" />

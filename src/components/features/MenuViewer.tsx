@@ -1,100 +1,14 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { LuChevronLeft, LuChevronRight, LuX } from "react-icons/lu";
-import { menuImages } from "../constants";
-
-const SWIPE_THRESHOLD = 50;
+import { LuDownload, LuFileType2 } from "react-icons/lu";
 
 export default function MenuViewer() {
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const touchStartX = useRef<number | null>(null);
-  const touchStartY = useRef<number | null>(null);
-
-  const selectedImage =
-    selectedIndex !== null ? menuImages[selectedIndex] : null;
-
-  const canPrev = selectedIndex !== null && selectedIndex > 0;
-  const canNext =
-    selectedIndex !== null && selectedIndex < menuImages.length - 1;
-
-  const openViewer = (index: number) => {
-    setIsLoading(true);
-    setSelectedIndex(index);
-  };
-
-  const closeViewer = () => {
-    setSelectedIndex(null);
-  };
-
-  const goPrev = () => {
-    setSelectedIndex((prev) => {
-      if (prev === null) return 0;
-      return Math.max(0, prev - 1);
-    });
-  };
-
-  const goNext = () => {
-    setSelectedIndex((prev) => {
-      if (prev === null) return 0;
-      return Math.min(menuImages.length - 1, prev + 1);
-    });
-  };
-
-  useEffect(() => {
-    if (selectedIndex === null) return;
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeViewer();
-      if (e.key === "ArrowLeft" && canPrev) goPrev();
-      if (e.key === "ArrowRight" && canNext) goNext();
-    };
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    window.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [selectedIndex, canPrev, canNext]);
-
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length !== 1) return;
-
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (touchStartX.current === null || touchStartY.current === null) return;
-
-    const endX = e.changedTouches[0].clientX;
-    const endY = e.changedTouches[0].clientY;
-
-    const deltaX = endX - touchStartX.current;
-    const deltaY = endY - touchStartY.current;
-
-    const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY);
-    const isStrongEnough = Math.abs(deltaX) > SWIPE_THRESHOLD;
-
-    if (isHorizontalSwipe && isStrongEnough) {
-      if (deltaX < 0 && canNext) goNext();
-      if (deltaX > 0 && canPrev) goPrev();
-    }
-
-    touchStartX.current = null;
-    touchStartY.current = null;
-  };
+  const pdfUrl = "/menu.pdf";
 
   return (
     <>
+      {/* header */}
       <section className="relative overflow-hidden pt-24 sm:px-6 lg:px-8">
         <div className="absolute inset-0 -z-10">
           <Image
@@ -121,17 +35,21 @@ export default function MenuViewer() {
         </div>
       </section>
 
-      <section className="mx-auto flex max-w-6xl flex-col items-center py-20">
+      <section className="mx-auto flex max-w-6xl flex-col items-center py-12 px-4 sm:py-20">
         <article className="w-full max-w-3xl">
-          <button
-            type="button"
-            onClick={() => openViewer(0)}
-            className="block w-full cursor-pointer overflow-hidden rounded-2xl p-4 text-left transition hover:opacity-95"
-            aria-label="Menü öffnen"
-          >
-            <div className="flex justify-center overflow-hidden rounded-xl bg-white shadow-lg">
-              <div className="relative w-full max-w-[620px]">
-                <div className="absolute inset-0 animate-pulse bg-neutral-200" />
+          <div className="group relative overflow-hidden rounded-2xl bg-white shadow-xl transition-all hover:shadow-2xl">
+            <a
+              href={pdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block cursor-pointer"
+            >
+              <div className="relative w-full">
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/10 sm:bg-black/0">
+                  <span className="rounded-full bg-white/90 px-4 py-2 text-sm font-medium opacity-0 transition-opacity group-hover:opacity-100 shadow-sm">
+                    PDF öffnen
+                  </span>
+                </div>
 
                 <Image
                   src="/menu-1.png"
@@ -139,84 +57,38 @@ export default function MenuViewer() {
                   width={620}
                   height={877}
                   priority
-                  sizes="(max-width: 768px) 100vw, 620px"
-                  className="relative z-10 h-auto w-full object-contain"
+                  className="h-auto w-full object-contain"
                 />
               </div>
-            </div>
-          </button>
-        </article>
-      </section>
+            </a>
 
-      {selectedImage && (
-        <div
-          className="fixed inset-0 z-100 bg-black/90"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Menüansicht"
-        >
-          <div className="relative flex h-full w-full items-center justify-center">
-            <button
-              type="button"
-              onClick={closeViewer}
-              className="absolute top-3 right-3 z-30 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-neutral-900 shadow-md backdrop-blur-sm transition hover:bg-white sm:top-4 sm:right-4 cursor-pointer"
-              aria-label="Schließen"
-            >
-              <LuX size={22} />
-            </button>
-
-            <button
-              type="button"
-              onClick={goPrev}
-              disabled={!canPrev}
-              className="absolute top-1/2 left-2 z-30 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-neutral-900 shadow-md backdrop-blur-sm transition hover:bg-white disabled:cursor-default disabled:opacity-35 sm:left-4 sm:h-12 sm:w-12 cursor-pointer"
-              aria-label="Vorherige Seite"
-            >
-              <LuChevronLeft size={24} />
-            </button>
-
-            <button
-              type="button"
-              onClick={goNext}
-              disabled={!canNext}
-              className="absolute top-1/2 right-2 z-30 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-neutral-900 shadow-md backdrop-blur-sm transition hover:bg-white disabled:cursor-default disabled:opacity-35 sm:right-4 sm:h-12 sm:w-12 cursor-pointer"
-              aria-label="Nächste Seite"
-            >
-              <LuChevronRight size={24} />
-            </button>
-
-            <div
-              className="flex h-full w-full items-center justify-center px-14 py-20 sm:px-20 sm:py-24"
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-            >
-              {isLoading && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60">
-                  <div className="flex flex-col items-center gap-3 text-white">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    <span className="text-sm font-medium">Wird geladen...</span>
-                  </div>
+            <div className="flex flex-col gap-3 border-t border-neutral-100 p-5 sm:flex-row sm:items-center sm:justify-between bg-white">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 text-red-600">
+                  <LuFileType2 size={24} />
                 </div>
-              )}
-              <img
-                src={selectedImage.file}
-                alt={selectedImage.title}
-                onLoad={() => setIsLoading(false)}
-                draggable={false}
-                className="block max-h-full max-w-full select-none object-contain"
-                style={{
-                  width: "auto",
-                  height: "auto",
-                }}
-              />
-            </div>
+                <div>
+                  <p className="text-sm font-semibold text-neutral-900">
+                    Speisekarte
+                  </p>
+                  <p className="text-xs text-neutral-500">PDF-Dokument</p>
+                </div>
+              </div>
 
-            <div className="absolute bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-full bg-white/95 px-3 py-1 text-sm font-medium text-neutral-700 shadow-md backdrop-blur-sm sm:bottom-5">
-              {selectedIndex! + 1} / {menuImages.length}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <a
+                  href={pdfUrl}
+                  download
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-neutral-800 active:scale-95 shadow-md"
+                >
+                  <LuDownload size={18} />
+                  Download
+                </a>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        </article>
+      </section>
     </>
   );
 }

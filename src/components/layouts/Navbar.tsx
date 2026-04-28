@@ -90,14 +90,14 @@ export const Navbar = () => {
 
       menuTweenRef.current = gsap.to(menu, {
         xPercent: 0,
-        duration: 0.45,
+        duration: 0.75,
         ease: "power3.out",
         overwrite: "auto",
       });
     } else {
       menuTweenRef.current = gsap.to(menu, {
         xPercent: 100,
-        duration: 0.4,
+        duration: 0.6,
         ease: "power3.inOut",
         overwrite: "auto",
         onComplete: () => {
@@ -147,8 +147,14 @@ export const Navbar = () => {
               key={item.label}
               href={item.href}
               className={`uppercase font-bold transition-all duration-200 ease-out hover:text-[#c10016] md:hover:-translate-y-0.5 ${
-                isScrolled ? "text-neutral-900" : "text-white"
-              }`}
+                isScrolled
+                  ? item.anim
+                    ? "text-[#c10016]"
+                    : "text-black/90"
+                  : item.anim
+                    ? "text-[#c10016]"
+                    : "text-white"
+              } `}
             >
               {item.label}
             </Link>

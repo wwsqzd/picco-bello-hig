@@ -1,3 +1,5 @@
+import { navItem } from "@/types/schared";
+
 export const sections = [
   {
     id: "wer-wir-sind",
@@ -99,10 +101,11 @@ export const openingHours = [
   { day: "Sonntag", time: "11:00 - 21:30" },
 ];
 
-export const navItems = [
-  { label: "Home", href: "/" },
+export const navItems : navItem[] = [
+  { label: "Startseite", href: "/" },
   { label: "Über uns", href: "/uber-uns" },
   { label: "Menü", href: "/menu" },
+  {label: "Neu bei uns!", href: "/neues", anim: true}
 ];
 
 export const menuImages = [
@@ -113,5 +116,52 @@ export const menuImages = [
   {
     title: "Menü Seite 2",
     file: "/menu-2.png",
+  },
+];
+
+
+export const products = [
+  {
+    category: "Pelmeni",
+    src: "/food1.jpg",
+    items: [
+      "Mit Rindfleisch, handgemacht",
+      "Mit Rind- und Schweinefleisch, handgemacht",
+      "Mit Hähnchenfleisch, handgemacht",
+    ],
+  },
+  {
+    category: "Wareniki",
+    src: "/food2.jpg",
+    items: [
+      "Mit Kartoffeln und Zwiebeln, handgemacht",
+      "Mit Kartoffeln und Pilzen, handgemacht",
+      "Mit Quarkfüllung und Dill, handgemacht",
+      "Mit Sauerkraut und Pilzen, handgemacht",
+    ],
+  },
+  {
+    category: "Manty",
+    src: "/food3.jpg",
+    items: [
+      "Mit Rindfleisch, handgemacht",
+      "Mit Schweine-, Rind- und Putenfleisch, handgemacht",
+    ],
+  },
+  {
+    category: "Tschebureki",
+    src: "/food4.jpg",
+    items: [
+      "Mit Käse- und Spinatfüllung, handgemacht",
+      "Mit Hähnchenfleisch, handgemacht",
+    ],
+  },
+  {
+    category: "Blinis",
+    src: "/food5.jpg",
+    items: [
+      "Mit Hähnchenfleisch und Pilzen, handgemacht",
+      "Mit Kirschen, Mohn und Quarkfüllung, handgemacht",
+    ],
   },
 ];

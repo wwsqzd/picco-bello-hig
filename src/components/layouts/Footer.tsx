@@ -86,6 +86,7 @@ export const Footer = () => {
           src="/background2.webp"
           alt="Pizza background"
           fill
+          placeholder="empty"
           className="object-cover object-[60%_center] md:object-center"
           loading="lazy"
         />
@@ -100,9 +101,8 @@ export const Footer = () => {
             <Image
               src="/mainlogo.webp"
               alt="Picco Bello Logo"
-              width={180}
-              height={96}
-              style={{ width: "auto" }}
+              width={144}
+              height={77}
               loading="lazy"
               className="h-auto w-35 sm:w-40 md:w-45"
             />

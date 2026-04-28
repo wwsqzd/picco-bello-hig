@@ -1,9 +1,6 @@
 "use client";
-import dynamic from "next/dynamic";
 
-const MenuViewer = dynamic(() => import("@/components/features/MenuViewer"), {
-  ssr: false,
-});
+import MenuViewer from "@/components/features/MenuViewer";
 
 export default function MenuPage() {
   return <MenuViewer />;
