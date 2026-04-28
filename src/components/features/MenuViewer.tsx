@@ -82,7 +82,7 @@ export default function MenuViewer() {
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-neutral-800 active:scale-95 shadow-md"
                 >
                   <LuDownload size={18} />
-                  Download
+                  Herunterladen
                 </a>
               </div>
             </div>
