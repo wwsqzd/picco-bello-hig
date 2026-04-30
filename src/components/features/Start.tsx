@@ -1,10 +1,41 @@
 "use client";
 
 import Image from "next/image";
+import { useLayoutEffect, useRef } from "react";
+import gsap from "gsap";
 
 export const Start = () => {
+  const container = useRef(null);
+  const titleRef = useRef(null);
+  const textRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline();
+
+      tl.from(titleRef.current, {
+        y: 80,
+        opacity: 0,
+        duration: 1,
+        ease: "power3.out",
+      }).from(
+        textRef.current,
+        {
+          y: 30,
+          opacity: 0,
+          duration: 0.8,
+        },
+        "-=0.5",
+      );
+    }, container);
+
+    return () => ctx.revert();
+  }, []);
   return (
-    <section className="relative flex min-h-screen w-full items-center justify-center overflow-hidden">
+    <section
+      ref={container}
+      className="relative flex min-h-screen w-full items-center justify-center overflow-hidden"
+    >
       <Image
         src="/background1.webp"
         alt="Frische Pizza"
@@ -16,11 +47,17 @@ export const Start = () => {
       <div className="absolute inset-0 bg-black/50" />
 
       <div className="relative z-10 mx-auto flex max-w-4xl flex-col items-center px-6 text-center text-white">
-        <h1 className="text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl">
+        <h1
+          ref={titleRef}
+          className="text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl"
+        >
           Frische Pizza – heiß geliefert
         </h1>
 
-        <p className="mt-4 max-w-2xl text-base leading-relaxed text-white/90 sm:text-lg lg:text-xl">
+        <p
+          ref={textRef}
+          className="mt-4 max-w-2xl text-base leading-relaxed text-white/90 sm:text-lg lg:text-xl"
+        >
           Schnell und direkt zu dir nach Hause
         </p>
 

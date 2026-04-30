@@ -186,7 +186,7 @@ export const Navbar = () => {
               key={item.label}
               href={item.href}
               onClick={() => setIsOpen(false)}
-              className="rounded-xl px-2 py-3 text-[1.05rem] uppercase font-bold leading-none transition hover:text-[#c10016]"
+              className={`rounded-xl px-2 py-3 text-[1.05rem] uppercase font-bold leading-none transition ${item.anim ? "text-[#c10016]" : "text-black/90"}`}
             >
               {item.label}
             </Link>

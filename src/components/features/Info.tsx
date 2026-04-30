@@ -21,7 +21,7 @@ export const Info = () => {
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-[#c10016] px-6 text-sm font-semibold uppercase tracking-wide text-white transition hover:-translate-y-0.5"
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-[#c10016] px-6 text-sm font-semibold uppercase tracking-wide text-white transition hover:-translate-y-0.5 cursor-pointer"
               >
                 <span
                   data-glf-cuid="9d4ec754-5189-4b4e-9f36-aa89e65f4cf4"
